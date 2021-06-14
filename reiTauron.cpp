@@ -160,6 +160,8 @@ vector<string> split(string str, char delimiter = ',')
 
 int main()
 {
+
+    #pragma region Seleciona janela e pega address
     setlocale(LC_ALL, "Portuguese");
     //node = new Node();
     std::wstring windowName;
@@ -181,8 +183,53 @@ int main()
     HWND hWnd = FindWindow(0, windowName.c_str());
 
     GetWindowThreadProcessId(hWnd, &pid);
+    HANDLE pHandle = OpenProcess(PROCESS_ALL_ACCESS, 0, pid);
+    DWORD rf_client = GetModuleBase(L"DoNPatch.dll", pid);
+    DWORD baseAddress = rf_client + 0x005642C;
+    DWORD address = 0;
+    ReadProcessMemory(pHandle, (void*)baseAddress, &address, sizeof(address), 0);
+    address += 0x59C;
+    ReadProcessMemory(pHandle, (void*)address, &address, sizeof(address), 0);
+    address += 0x0;
+
+    DWORD baseAddressCoordenadasReiTauron = rf_client + 0x005642C;
+    DWORD addressCoordenadasReiTauron = 0;
+    ReadProcessMemory(pHandle, (void*)baseAddressCoordenadasReiTauron, &addressCoordenadasReiTauron, sizeof(addressCoordenadasReiTauron), 0);
+    addressCoordenadasReiTauron += 0x61C;
+    ReadProcessMemory(pHandle, (void*)addressCoordenadasReiTauron, &addressCoordenadasReiTauron, sizeof(addressCoordenadasReiTauron), 0);
+    addressCoordenadasReiTauron += 0x0;
+
+    DWORD rf_client2 = GetModuleBase(L"SD Asgard.exe", pid);
+    DWORD baseAddressNickname = rf_client2 + 0x01EDD54;
+    DWORD addressNickname = 0;
+    ReadProcessMemory(pHandle, (void*)baseAddressNickname, &addressNickname, sizeof(addressNickname), 0);
+    addressNickname += 0x0;
+
+    DWORD baseAddressPlayerX = rf_client2 + 0x01EDD58;
+    DWORD addressPlayerX = 0;
+    ReadProcessMemory(pHandle, (void*)baseAddressPlayerX, &addressPlayerX, sizeof(addressPlayerX), 0);
+    addressPlayerX += 0x770;
+    ReadProcessMemory(pHandle, (void*)addressPlayerX, &addressPlayerX, sizeof(addressPlayerX), 0);
+    addressPlayerX += 0xC;
+    ReadProcessMemory(pHandle, (void*)addressPlayerX, &addressPlayerX, sizeof(addressPlayerX), 0);
+    addressPlayerX += 0x78;
+
+    DWORD addressPlayerY = 0;
+    ReadProcessMemory(pHandle, (void*)baseAddressPlayerX, &addressPlayerY, sizeof(addressPlayerY), 0);
+    addressPlayerY += 0x770;
+    ReadProcessMemory(pHandle, (void*)addressPlayerY, &addressPlayerY, sizeof(addressPlayerY), 0);
+    addressPlayerY += 0xC;
+    ReadProcessMemory(pHandle, (void*)addressPlayerY, &addressPlayerY, sizeof(addressPlayerY), 0);
+    addressPlayerY += 0x7C;
+
+    DWORD addressModoAtaque = rf_client2 + 0x20A9FC;
+    DWORD addressPocaoHp = rf_client2 + 0x20AA04;
+    DWORD addressRacaoPet = rf_client2 + 0x20AA00;
+#pragma endregion
 
     if (IsProcessRunning(pid)) {
+
+        #pragma region Alterar nome e pegar primeiros address
 
         std::wcout << "Agora digite o NOVO nome para a janela: ";
         std::getline(std::cin, newWindowName);
@@ -190,9 +237,9 @@ int main()
         LPCWSTR result = windowName.c_str();
         SetWindowText(hWnd, result);
 
-        HWND hWnd = FindWindow(0, result);
+        HWND hWnd2 = FindWindow(0, result);
 
-        GetWindowThreadProcessId(hWnd, &pid);
+        GetWindowThreadProcessId(hWnd2, &pid);
         HANDLE pHandle = OpenProcess(PROCESS_ALL_ACCESS, 0, pid);
         DWORD rf_client = GetModuleBase(L"DoNPatch.dll", pid);
         DWORD baseAddress = rf_client + 0x005642C;
@@ -235,6 +282,8 @@ int main()
         DWORD addressModoAtaque = rf_client2 + 0x20A9FC;
         DWORD addressPocaoHp = rf_client2 + 0x20AA04;
         DWORD addressRacaoPet = rf_client2 + 0x20AA00;
+#pragma endregion
+
     }
     else {
         cout << "A janela digitada encontra-se fechada!" << endl;
