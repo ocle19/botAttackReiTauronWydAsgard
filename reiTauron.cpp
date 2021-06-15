@@ -15,7 +15,7 @@ float playerX;
 float playerY;
 int reiX;
 int reiY;
-int modoAtaque = 0;
+int modoAtaque;
 int pocaoHp = 30;
 int racaoPet = 30;
 HANDLE pHandle;
@@ -30,7 +30,97 @@ DWORD addressPlayerY;
 DWORD addressModoAtaque;
 DWORD addressPocaoHp;
 DWORD addressRacaoPet;
+boolean autoAtaque;
+boolean ativado;
+string modoAtaqueString;
+DWORD baseAddressPlayerX;
+DWORD baseAddressCoordenadasReiTauron;
+DWORD baseAddressNickname;
+HWND hWnd2;
+
 //Node* node;
+
+
+void atacar(int modo, DWORD pid) {
+    HANDLE pHandle = OpenProcess(PROCESS_ALL_ACCESS, 0, pid);
+    if (modo >= 1 ) {
+        modoAtaque = 2;
+        int hp = 30;
+        int racao = 50;
+        HANDLE pHandle = OpenProcess(PROCESS_ALL_ACCESS, 0, pid);
+        BOOL alterarModoAtaque = WriteProcessMemory(pHandle, (LPVOID)addressModoAtaque, (LPVOID)&modoAtaque, sizeof((LPVOID)modoAtaque), NULL);
+        BOOL alterarPocao = WriteProcessMemory(pHandle, (LPVOID)addressPocaoHp, (LPVOID)&hp, sizeof((LPVOID)hp), NULL);
+        BOOL alterarRacao = WriteProcessMemory(pHandle, (LPVOID)addressRacaoPet, (LPVOID)&racao, sizeof((LPVOID)racao), NULL);
+        if (alterarModoAtaque && alterarPocao && alterarRacao) {
+            cout << "Ataque e cura ATIVADOS - P.HP / MP em " << pocaoHp << " % " << " e R.PET em " << racaoPet << " % " << " pressione F1 para DESATIVAR" << endl;
+            ativado = true;
+            autoAtaque = true;
+        }
+        else {
+            DWORD errCode = GetLastError();
+            cout << "Writing the memory failed!" << endl;
+            cout << "Error code: " << errCode << endl;
+        }
+        return;
+    }
+    ReadProcessMemory(pHandle, (LPVOID)addressModoAtaque, &modoAtaque, sizeof(addressModoAtaque), 0);
+    modoAtaque = (int)modoAtaque;
+
+    if (modoAtaque == 1) {
+        modoAtaqueString = "FISICO";
+    }
+    else if (modoAtaque == 2) {
+        modoAtaqueString = "MAGIA";
+    }
+    else if (modoAtaque == 3) {
+        modoAtaqueString = "APENAS POTE";
+    }
+    else {
+        modoAtaqueString = "DESATIVADO";
+    }
+
+}
+
+void pararDeAtacar(int modo, DWORD pid) {
+    HANDLE pHandle = OpenProcess(PROCESS_ALL_ACCESS, 0, pid);
+    if (modo <= 0) {
+        modo = 0;
+        int hp = 30;
+        int racao = 50;
+        BOOL alterarModoAtaque = WriteProcessMemory(pHandle, (LPVOID)addressModoAtaque, (LPVOID)&modo, sizeof((LPVOID)modo), NULL);
+        BOOL alterarPocao = WriteProcessMemory(pHandle, (LPVOID)addressPocaoHp, (LPVOID)&hp, sizeof((LPVOID)hp), NULL);
+        BOOL alterarRacao = WriteProcessMemory(pHandle, (LPVOID)addressRacaoPet, (LPVOID)&racao, sizeof((LPVOID)racao), NULL);
+        if (alterarModoAtaque && alterarPocao && alterarRacao) {
+            cout << "Ataque e cura DESATIVADOS! pressione F1 para ATIVAR" << endl;
+            ativado = false;
+            autoAtaque = false;
+        }
+        else {
+            DWORD errCode = GetLastError();
+            cout << "Writing the memory failed!" << endl;
+            cout << "Error code: " << errCode << endl;
+        }
+        return;
+    }
+
+
+    ReadProcessMemory(pHandle, (LPVOID)addressModoAtaque, &modoAtaque, sizeof(addressModoAtaque), 0);
+    modoAtaque = (int)modoAtaque;
+
+    if (modoAtaque == 1) {
+        modoAtaqueString = "FISICO";
+    }
+    else if (modoAtaque == 2) {
+        modoAtaqueString = "MAGIA";
+    }
+    else if (modoAtaque == 3) {
+        modoAtaqueString = "APENAS POTE";
+    }
+    else {
+        modoAtaqueString = "DESATIVADO";
+    }
+
+}
 
 std::string ReplaceAll(std::string str, const std::string& from, const std::string& to) {
     size_t start_pos = 0;
@@ -183,30 +273,26 @@ int main()
     HWND hWnd = FindWindow(0, windowName.c_str());
 
     GetWindowThreadProcessId(hWnd, &pid);
-    HANDLE pHandle = OpenProcess(PROCESS_ALL_ACCESS, 0, pid);
-    DWORD rf_client = GetModuleBase(L"DoNPatch.dll", pid);
-    DWORD baseAddress = rf_client + 0x005642C;
-    DWORD address = 0;
+    pHandle = OpenProcess(PROCESS_ALL_ACCESS, 0, pid);
+    rf_client = GetModuleBase(L"DoNPatch.dll", pid);
+    baseAddress = rf_client + 0x005642C;
     ReadProcessMemory(pHandle, (void*)baseAddress, &address, sizeof(address), 0);
     address += 0x59C;
     ReadProcessMemory(pHandle, (void*)address, &address, sizeof(address), 0);
     address += 0x0;
 
-    DWORD baseAddressCoordenadasReiTauron = rf_client + 0x005642C;
-    DWORD addressCoordenadasReiTauron = 0;
+    baseAddressCoordenadasReiTauron = rf_client + 0x005642C;
     ReadProcessMemory(pHandle, (void*)baseAddressCoordenadasReiTauron, &addressCoordenadasReiTauron, sizeof(addressCoordenadasReiTauron), 0);
     addressCoordenadasReiTauron += 0x61C;
     ReadProcessMemory(pHandle, (void*)addressCoordenadasReiTauron, &addressCoordenadasReiTauron, sizeof(addressCoordenadasReiTauron), 0);
     addressCoordenadasReiTauron += 0x0;
 
-    DWORD rf_client2 = GetModuleBase(L"SD Asgard.exe", pid);
-    DWORD baseAddressNickname = rf_client2 + 0x01EDD54;
-    DWORD addressNickname = 0;
+    rf_client2 = GetModuleBase(L"SD Asgard.exe", pid);
+    baseAddressNickname = rf_client2 + 0x01EDD54;
     ReadProcessMemory(pHandle, (void*)baseAddressNickname, &addressNickname, sizeof(addressNickname), 0);
     addressNickname += 0x0;
 
-    DWORD baseAddressPlayerX = rf_client2 + 0x01EDD58;
-    DWORD addressPlayerX = 0;
+    baseAddressPlayerX = rf_client2 + 0x01EDD58;
     ReadProcessMemory(pHandle, (void*)baseAddressPlayerX, &addressPlayerX, sizeof(addressPlayerX), 0);
     addressPlayerX += 0x770;
     ReadProcessMemory(pHandle, (void*)addressPlayerX, &addressPlayerX, sizeof(addressPlayerX), 0);
@@ -214,7 +300,6 @@ int main()
     ReadProcessMemory(pHandle, (void*)addressPlayerX, &addressPlayerX, sizeof(addressPlayerX), 0);
     addressPlayerX += 0x78;
 
-    DWORD addressPlayerY = 0;
     ReadProcessMemory(pHandle, (void*)baseAddressPlayerX, &addressPlayerY, sizeof(addressPlayerY), 0);
     addressPlayerY += 0x770;
     ReadProcessMemory(pHandle, (void*)addressPlayerY, &addressPlayerY, sizeof(addressPlayerY), 0);
@@ -222,9 +307,9 @@ int main()
     ReadProcessMemory(pHandle, (void*)addressPlayerY, &addressPlayerY, sizeof(addressPlayerY), 0);
     addressPlayerY += 0x7C;
 
-    DWORD addressModoAtaque = rf_client2 + 0x20A9FC;
-    DWORD addressPocaoHp = rf_client2 + 0x20AA04;
-    DWORD addressRacaoPet = rf_client2 + 0x20AA00;
+    addressModoAtaque = rf_client2 + 0x20A9FC;
+    addressPocaoHp = rf_client2 + 0x20AA04;
+    addressRacaoPet = rf_client2 + 0x20AA00;
 #pragma endregion
 
     if (IsProcessRunning(pid)) {
@@ -237,33 +322,30 @@ int main()
         LPCWSTR result = windowName.c_str();
         SetWindowText(hWnd, result);
 
-        HWND hWnd2 = FindWindow(0, result);
+        hWnd2 = FindWindow(0, result);
 
         GetWindowThreadProcessId(hWnd2, &pid);
-        HANDLE pHandle = OpenProcess(PROCESS_ALL_ACCESS, 0, pid);
-        DWORD rf_client = GetModuleBase(L"DoNPatch.dll", pid);
-        DWORD baseAddress = rf_client + 0x005642C;
-        DWORD address = 0;
+        pHandle = OpenProcess(PROCESS_ALL_ACCESS, 0, pid);
+        rf_client = GetModuleBase(L"DoNPatch.dll", pid);
+        baseAddress = rf_client + 0x005642C;
         ReadProcessMemory(pHandle, (void*)baseAddress, &address, sizeof(address), 0);
         address += 0x59C;
         ReadProcessMemory(pHandle, (void*)address, &address, sizeof(address), 0);
         address += 0x0;
 
-        DWORD baseAddressCoordenadasReiTauron = rf_client + 0x005642C;
-        DWORD addressCoordenadasReiTauron = 0;
+         baseAddressCoordenadasReiTauron = rf_client + 0x005642C;
+         addressCoordenadasReiTauron = 0;
         ReadProcessMemory(pHandle, (void*)baseAddressCoordenadasReiTauron, &addressCoordenadasReiTauron, sizeof(addressCoordenadasReiTauron), 0);
         addressCoordenadasReiTauron += 0x61C;
         ReadProcessMemory(pHandle, (void*)addressCoordenadasReiTauron, &addressCoordenadasReiTauron, sizeof(addressCoordenadasReiTauron), 0);
         addressCoordenadasReiTauron += 0x0;
 
-        DWORD rf_client2 = GetModuleBase(L"SD Asgard.exe", pid);
-        DWORD baseAddressNickname = rf_client2 + 0x01EDD54;
-        DWORD addressNickname = 0;
+         rf_client2 = GetModuleBase(L"SD Asgard.exe", pid);
+        baseAddressNickname = rf_client2 + 0x01EDD54;
         ReadProcessMemory(pHandle, (void*)baseAddressNickname, &addressNickname, sizeof(addressNickname), 0);
         addressNickname += 0x0;
 
-        DWORD baseAddressPlayerX = rf_client2 + 0x01EDD58;
-        DWORD addressPlayerX = 0;
+        baseAddressPlayerX = rf_client2 + 0x01EDD58;
         ReadProcessMemory(pHandle, (void*)baseAddressPlayerX, &addressPlayerX, sizeof(addressPlayerX), 0);
         addressPlayerX += 0x770;
         ReadProcessMemory(pHandle, (void*)addressPlayerX, &addressPlayerX, sizeof(addressPlayerX), 0);
@@ -271,7 +353,6 @@ int main()
         ReadProcessMemory(pHandle, (void*)addressPlayerX, &addressPlayerX, sizeof(addressPlayerX), 0);
         addressPlayerX += 0x78;
 
-        DWORD addressPlayerY = 0;
         ReadProcessMemory(pHandle, (void*)baseAddressPlayerX, &addressPlayerY, sizeof(addressPlayerY), 0);
         addressPlayerY += 0x770;
         ReadProcessMemory(pHandle, (void*)addressPlayerY, &addressPlayerY, sizeof(addressPlayerY), 0);
@@ -279,9 +360,9 @@ int main()
         ReadProcessMemory(pHandle, (void*)addressPlayerY, &addressPlayerY, sizeof(addressPlayerY), 0);
         addressPlayerY += 0x7C;
 
-        DWORD addressModoAtaque = rf_client2 + 0x20A9FC;
-        DWORD addressPocaoHp = rf_client2 + 0x20AA04;
-        DWORD addressRacaoPet = rf_client2 + 0x20AA00;
+        addressModoAtaque = rf_client2 + 0x20A9FC;
+        addressPocaoHp = rf_client2 + 0x20AA04;
+        addressRacaoPet = rf_client2 + 0x20AA00;
 #pragma endregion
 
     }
@@ -297,9 +378,24 @@ int main()
         ReadProcessMemory(pHandle, (LPVOID)addressNickname, &nickname, 250, NULL);
         ReadProcessMemory(pHandle, (LPVOID)addressPlayerX, &playerX, sizeof(addressPlayerX), 0);
         ReadProcessMemory(pHandle, (LPVOID)addressPlayerY, &playerY, sizeof(addressPlayerY), 0);
-        ReadProcessMemory(pHandle, (LPVOID)addressModoAtaque, &modoAtaque, sizeof(addressModoAtaque), 0);
+        
         ReadProcessMemory(pHandle, (LPVOID)addressPocaoHp, &pocaoHp, sizeof(addressPocaoHp), 0);
         ReadProcessMemory(pHandle, (LPVOID)addressRacaoPet, &racaoPet, sizeof(addressRacaoPet), 0);
+        ReadProcessMemory(pHandle, (LPVOID)addressModoAtaque, &modoAtaque, sizeof(addressModoAtaque), 0);
+        modoAtaque = (int)modoAtaque;
+
+        if (modoAtaque == 1) {
+            modoAtaqueString = "FISICO";
+        }
+        else if (modoAtaque == 2) {
+            modoAtaqueString = "MAGIA";
+        }
+        else if (modoAtaque == 3) {
+            modoAtaqueString = "APENAS POTE";
+        }
+        else {
+            modoAtaqueString = "DESATIVADO";
+        }
 
         /// cout << target << endl;
         std::string s(target);
@@ -316,26 +412,53 @@ int main()
 
         playerX = (int)playerX;
         playerY = (int)playerY;
-        modoAtaque = (int)modoAtaque;
-        std::string modoAtaqueString;
-        if (modoAtaque == 1) {
-            modoAtaqueString = "FISICO";
-        }
-        else if (modoAtaque == 2) {
-            modoAtaqueString = "MAGIA";
-        }
-        else if (modoAtaque == 3) {
-            modoAtaqueString = "APENAS POTE";
-        }
-        else {
-            modoAtaqueString = "DESATIVADO";
-        }
-        cout << "Modo Ataque: " << modoAtaque << endl;
-        cout << "Modo Ataque: " << modoAtaqueString << endl;
+       
+
+        
+        ///cout << "Modo Ataque: " << modoAtaqueString << endl;
         cout << "Auto HP: " << pocaoHp << "%" << endl;
         cout << "Alimentar PET: " << racaoPet << "%" << endl;
+        if (modoAtaque == 1 || modoAtaque ==2) {
+            cout << "Para DESATIVAR o auto ataque aperte 'F2' " << endl;
+        }
+        else {
+            cout << "Para ATIVAR o auto ataque aperte 'F1' " << endl;
+        }
 
-
+        if (GetKeyState(VK_F1)) {
+            int modoAtaqueA = 2;
+            int hp = 30;
+            int racao = 50;
+            HANDLE pHandle = OpenProcess(PROCESS_ALL_ACCESS, 0, pid);
+            BOOL alterarModoAtaque = WriteProcessMemory(pHandle, (LPVOID)addressModoAtaque, (LPVOID)&modoAtaqueA, sizeof((LPVOID)modoAtaqueA), NULL);
+            BOOL alterarPocao = WriteProcessMemory(pHandle, (LPVOID)addressPocaoHp, (LPVOID)&hp, sizeof((LPVOID)hp), NULL);
+            BOOL alterarRacao = WriteProcessMemory(pHandle, (LPVOID)addressRacaoPet, (LPVOID)&racao, sizeof((LPVOID)racao), NULL);
+            if (alterarModoAtaque && alterarPocao && alterarRacao) {
+               //// cout << "Ataque e cura ATIVADOS - P.HP / MP em " << pocaoHp << " % " << " e R.PET em " << racaoPet << " % " << " pressione F1 para DESATIVAR" << endl;
+            }
+            else {
+                DWORD errCode = GetLastError();
+                cout << "Writing the memory failed!" << endl;
+                cout << "Error code: " << errCode << endl;
+            }
+        }
+        if (GetKeyState(VK_F2)) {
+            int modoAtaqueD = 3;
+            int hp = 30;
+            int racao = 50;
+            HANDLE pHandle = OpenProcess(PROCESS_ALL_ACCESS, 0, pid);
+            BOOL alterarModoAtaque = WriteProcessMemory(pHandle, (LPVOID)addressModoAtaque, (LPVOID)&modoAtaqueD, sizeof((LPVOID)modoAtaqueD), NULL);
+            BOOL alterarPocao = WriteProcessMemory(pHandle, (LPVOID)addressPocaoHp, (LPVOID)&hp, sizeof((LPVOID)hp), NULL);
+            BOOL alterarRacao = WriteProcessMemory(pHandle, (LPVOID)addressRacaoPet, (LPVOID)&racao, sizeof((LPVOID)racao), NULL);
+            if (alterarModoAtaque && alterarPocao && alterarRacao) {
+               /// cout << "Ataque DESATIVADO e cura ATIVADA - P.HP / MP em " << pocaoHp << " % " << " e R.PET em " << racaoPet << " % " << " pressione F1 para DESATIVAR" << endl;
+            }
+            else {
+                DWORD errCode = GetLastError();
+                cout << "Writing the memory failed!" << endl;
+                cout << "Error code: " << errCode << endl;
+            }
+        }
 
         int numeroTauros = atoi(std::string(s).c_str());
         // cout << "Faltam" << s << "Taurons!   - JANELA: " << newWindowName << endl;
@@ -369,34 +492,41 @@ int main()
                     int distRei = GetDistance(playerX, playerY, reiX, reiY);
                     cout << "Distancia do rei: " << distRei << " metros" << endl;
 
-                    int modo = 2;
-                    int hp = 30;
-                    if (GetDistance(playerX, playerY, reiX, reiY) <= 12) {
+                   /// int modo = 2;
+                   /// int hp = 30;
+                   /// int racao = 50;
+                   /* if (GetDistance(playerX, playerY, reiX, reiY) <= 12 && autoAtaque == true) {
                         BOOL alterarModoAtaque = WriteProcessMemory(pHandle, (LPVOID)addressModoAtaque, (LPVOID)&modo, sizeof((LPVOID)modo), NULL);
                         BOOL alterarPocao = WriteProcessMemory(pHandle, (LPVOID)addressPocaoHp, (LPVOID)&hp, sizeof((LPVOID)hp), NULL);
-                        if (alterarModoAtaque && alterarPocao) {
-                            cout << "O modo de ataque foi alterado para " << modoAtaqueString << " e pote hp para " << pocaoHp << "%" << "por estar perto do Rei" << endl;
+                        BOOL alterarRacao = WriteProcessMemory(pHandle, (LPVOID)addressRacaoPet, (LPVOID)&racao, sizeof((LPVOID)racao), NULL);
+                        if (alterarModoAtaque && alterarPocao && alterarRacao){
+                            cout << "O modo de ataque foi alterado para " << modoAtaqueString << ", P.HP/MP para " << pocaoHp << "%" << " e R. PET para " << racaoPet << " % " << " por estar enfrentando o Rei" << endl;
                         }
                         else {
                             DWORD errCode = GetLastError();
                             cout << "Writing the memory failed!" << endl;
                             cout << "Error code: " << errCode << endl;
                         }
-                    }
-                    else {
-                        int modo = 0;
+                    }*/
+                    /* else {
+                       /* int modo = 0;
                         int hp = 30;
-                        BOOL alterarModoAtaque = WriteProcessMemory(pHandle, (LPVOID)addressModoAtaque, (LPVOID)&modo, sizeof((LPVOID)modo), NULL);
-                        BOOL alterarPocao = WriteProcessMemory(pHandle, (LPVOID)addressPocaoHp, (LPVOID)&hp, sizeof((LPVOID)hp), NULL);
-                        if (alterarModoAtaque && alterarPocao) {
-                            cout << "O modo de ataque foi alterado para " << modoAtaqueString << " e pote hp para " << pocaoHp << "%" << "por estar longe do Rei" << endl;
+                        int racao = 50;
+                        if (autoAtaque == true) {
+                            BOOL alterarModoAtaque = WriteProcessMemory(pHandle, (LPVOID)addressModoAtaque, (LPVOID)&modo, sizeof((LPVOID)modo), NULL);
+                            BOOL alterarPocao = WriteProcessMemory(pHandle, (LPVOID)addressPocaoHp, (LPVOID)&hp, sizeof((LPVOID)hp), NULL);
+                            BOOL alterarRacao = WriteProcessMemory(pHandle, (LPVOID)addressRacaoPet, (LPVOID)&racao, sizeof((LPVOID)racao), NULL);
+                            if (alterarModoAtaque && alterarPocao && alterarRacao) {
+                                cout << "O modo de ataque foi " << modoAtaqueString << endl;
+                            }
+                            else {
+                                DWORD errCode = GetLastError();
+                                cout << "Writing the memory failed!" << endl;
+                                cout << "Error code: " << errCode << endl;
+                            }
                         }
-                        else {
-                            DWORD errCode = GetLastError();
-                            cout << "Writing the memory failed!" << endl;
-                            cout << "Error code: " << errCode << endl;
-                        }
-                    }
+                        
+                    } */
 
                     /// SendAction(playerX, playerY, node->Route[node->RouteActual].X, node->Route[node->RouteActual].Y, 4, 0);
                     /// node->Path(playerX, playerY, reiX, reiY);
@@ -409,23 +539,23 @@ int main()
                      ///      
                      ///
                     nasceu = false;
-                    MENSAGEM = "Rei Tauron pode ter nascido no canal " + newWindowName + "," + sCoordenada;
+                   //// MENSAGEM = "Rei Tauron pode ter nascido no canal " + newWindowName + "," + sCoordenada;
                 }
 
                 if (newWindowName == "ODIN-1") {
-                    std::ofstream ofs("ODIN-1.txt", std::ofstream::out);
-                    ofs << MENSAGEM;
-                    ofs.close();
+                  ///  std::ofstream ofs("ODIN-1.txt", std::ofstream::out);
+                   /// ofs << MENSAGEM;
+                   /// ofs.close();
                 }
                 else if (newWindowName == "ODIN-2") {
-                    std::ofstream ofs("ODIN-2.txt", std::ofstream::out);
-                    ofs << MENSAGEM;
-                    ofs.close();
+                   /// std::ofstream ofs("ODIN-2.txt", std::ofstream::out);
+                  ///  ofs << MENSAGEM;
+                   /// ofs.close();
                 }
                 else if (newWindowName == "ODIN-3") {
-                    std::ofstream ofs("ODIN-3.txt", std::ofstream::out);
-                    ofs << MENSAGEM;
-                    ofs.close();
+                   /// std::ofstream ofs("ODIN-3.txt", std::ofstream::out);
+                   /// ofs << MENSAGEM;
+                   /// ofs.close();
                 }
                 else
                 {
@@ -461,3 +591,4 @@ int main()
     }
     system("Pause");
 }
+
